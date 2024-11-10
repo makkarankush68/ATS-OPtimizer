@@ -1,21 +1,20 @@
 import os
 import json
-from fpdf import FPDF
-import logging
-import streamlit as st
-from scripts import JobDescriptionProcessor, ResumeProcessor
-from scripts.utils import init_logging_config
-from typing import List
-import networkx as nx
 import nltk
+import logging
 import pandas as pd
+import streamlit as st
+import networkx as nx
 import plotly.express as px
 import plotly.graph_objects as go
-from annotated_text import annotated_text
+from fpdf import FPDF
+from typing import List
 from streamlit_extras import add_vertical_space as avs
-
-from scripts.similarity.get_score import get_score
+from scripts import JobDescriptionProcessor, ResumeProcessor
+from scripts.utils import init_logging_config
+from annotated_text import annotated_text
 from scripts.utils import get_filenames_from_dir
+from scripts.similarity.get_score import get_score
 
 # Initialize logging configuration
 init_logging_config()
@@ -26,6 +25,7 @@ PROCESSED_JOB_DESCRIPTIONS_PATH = "Data\Processed\JobDescription"
 RESUMES_PATH = "Data\Resumes"
 JOB_DESCRIPTIONS_PATH = "Data\JobDescription"
 
+
 # Ensure directories exist
 def ensure_directories_exist(paths: List[str]):
     for path in paths:
@@ -33,13 +33,17 @@ def ensure_directories_exist(paths: List[str]):
             os.makedirs(path)
             logging.info(f"Created directory: {path}")
 
+
 # Create necessary directories
-ensure_directories_exist([
-    PROCESSED_RESUMES_PATH,
-    PROCESSED_JOB_DESCRIPTIONS_PATH,
-    RESUMES_PATH,
-    JOB_DESCRIPTIONS_PATH
-])
+ensure_directories_exist(
+    [
+        PROCESSED_RESUMES_PATH,
+        PROCESSED_JOB_DESCRIPTIONS_PATH,
+        RESUMES_PATH,
+        JOB_DESCRIPTIONS_PATH,
+    ]
+)
+
 
 # Utility functions
 def read_json(file_path):
@@ -48,6 +52,7 @@ def read_json(file_path):
     return data
 
 
+# Remove old files
 def remove_old_files(files_path):
     if not os.path.exists(files_path):
         os.makedirs(files_path)
@@ -56,48 +61,6 @@ def remove_old_files(files_path):
         if os.path.isfile(file_path):
             os.remove(file_path)
     logging.info(f"Deleted old files from {files_path}")
-
-
-# Start Streamlit app
-st.title("ResCraft - ATS Optimizer")
-st.header("Upload your resume and job description to get insights on ATS optimization")
-
-# Resume upload section
-st.subheader("Step 1: Upload Your Resume (PDF)")
-resume_file = st.file_uploader("Upload your resume in PDF format", type="pdf")
-if resume_file:
-    remove_old_files(PROCESSED_RESUMES_PATH)
-    remove_old_files(RESUMES_PATH)
-    # Remove old files before processing a new one
-    resume_path = os.path.join(RESUMES_PATH, resume_file.name)
-    with open(resume_path, "wb") as f:
-        f.write(resume_file.getbuffer())
-    st.success(f"Resume uploaded successfully: {resume_path}")
-
-    resume_processor = ResumeProcessor(resume_path)
-    resume_processor.process()  # Process and save the resume in JSON format
-
-# Job description text input
-st.subheader("Step 2: Paste the Job Description")
-job_description = st.text_area("Paste the job description here")
-if job_description:
-    remove_old_files(PROCESSED_JOB_DESCRIPTIONS_PATH)
-    remove_old_files(JOB_DESCRIPTIONS_PATH)  # Clear old files
-    job_description_path = os.path.join(JOB_DESCRIPTIONS_PATH, "job_description.pdf")
-    print(job_description_path)
-
-    pdf = FPDF(format="A4")  # Specify A4 page size
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    job_description = job_description.replace("\u2019", "'")
-    pdf.multi_cell(0, 10, txt=job_description)
-
-    pdf.output(job_description_path)
-    job_description_processor = JobDescriptionProcessor(job_description_path)
-    job_description_processor.process()  # Process and save the job description
-
-# Display parsed data if both resume and job description are provided
 
 
 # Tokenize and annotate text
@@ -217,68 +180,114 @@ def create_star_graph(nodes_and_weights, title):
     st.plotly_chart(fig)
 
 
+# Start Streamlit app
+st.title("ResCraft - ATS Optimizer")
+st.header("Upload your resume and job description to get insights on ATS optimization")
+
+# Resume upload section
+st.subheader("Step 1: Upload Your Resume (PDF)")
+resume_file = st.file_uploader("Upload your resume in PDF format", type="pdf")
+if resume_file:
+    remove_old_files(PROCESSED_RESUMES_PATH)
+    remove_old_files(RESUMES_PATH)
+    # Remove old files before processing a new one
+    resume_path = os.path.join(RESUMES_PATH, resume_file.name)
+    with open(resume_path, "wb") as f:
+        f.write(resume_file.getbuffer())
+    st.success(f"Resume uploaded successfully: {resume_path}")
+
+    resume_processor = ResumeProcessor(resume_path)
+    resume_processor.process()  # Process and save the resume in JSON format
+
+# Job description text input
+st.subheader("Step 2: Paste the Job Description")
+job_description = st.text_area("Paste the job description here")
+if job_description:
+    remove_old_files(PROCESSED_JOB_DESCRIPTIONS_PATH)
+    remove_old_files(JOB_DESCRIPTIONS_PATH)  # Clear old files
+    job_description_path = os.path.join(JOB_DESCRIPTIONS_PATH, "job_description.pdf")
+    print(job_description_path)
+
+    pdf = FPDF(format="A4")  # Specify A4 page size
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    job_description = job_description.replace("\u2019", "'")
+    pdf.multi_cell(0, 10, txt=job_description)
+
+    pdf.output(job_description_path)
+    job_description_processor = JobDescriptionProcessor(job_description_path)
+    job_description_processor.process()  # Process and save the job description
+
+
 # Display job descriptions and resumes
 resume_names = get_filenames_from_dir(PROCESSED_RESUMES_PATH)
 st.markdown(f"##### {len(resume_names)} resumes available. Please select one:")
-selected_resume = st.selectbox("", resume_names)
-
-selected_file = read_json(os.path.join(PROCESSED_RESUMES_PATH, selected_resume))
-st.markdown("#### Parsed Resume Data")
-st.caption("Parsed text from your resume:")
-# st.write(selected_file["clean_data"])
-
-annotated_text(
-    create_annotated_text(
-        selected_file["clean_data"],
-        selected_file["extracted_keywords"],
-        "KW",
-        "#0B666A",
+selected_resume = st.selectbox("", resume_names, index=0)
+if selected_resume:
+    selected_file = read_json(os.path.join(PROCESSED_RESUMES_PATH, selected_resume))
+    st.markdown("#### Parsed Resume Data")
+    st.caption("Parsed text from your resume:")
+    # st.write(selected_file["clean_data"])
+    annotated_text(
+        create_annotated_text(
+            selected_file["clean_data"],
+            selected_file["extracted_keywords"],
+            "KW",
+            "#0B666A",
+        )
     )
-)
-st.write("Entities from the Resume:")
-create_star_graph(selected_file["keyterms"], "Entities from Resume")
+    st.write("Entities from the Resume:")
+    create_star_graph(selected_file["keyterms"], "Entities from Resume")
 
 # Job descriptions available
 job_descriptions = get_filenames_from_dir(PROCESSED_JOB_DESCRIPTIONS_PATH)
 st.markdown(
     f"##### {len(job_descriptions)} job descriptions available. Please select one:"
 )
-selected_jd_name = st.selectbox("", job_descriptions)
-
-selected_jd = read_json(os.path.join(PROCESSED_JOB_DESCRIPTIONS_PATH, selected_jd_name))
-st.markdown("#### Job Description")
-# st.write(selected_jd["clean_data"])
-annotated_text(
-    create_annotated_text(
-        selected_jd["clean_data"],
-        selected_jd["extracted_keywords"],
-        "KW",
-        "#0B666A",
+selected_jd_name = st.selectbox("", job_descriptions, index=1)
+if selected_jd_name:
+    selected_jd = read_json(
+        os.path.join(PROCESSED_JOB_DESCRIPTIONS_PATH, selected_jd_name)
     )
-)
-st.write("Entities from the job description:")
-create_star_graph(selected_jd["keyterms"], "Entities from Job Description")
-
-# Annotate common words and show similarity score
-annotated_text(
-    create_annotated_text(
-        selected_file["clean_data"], selected_jd["extracted_keywords"], "JD", "#F24C3D"
+    st.markdown("#### Job Description")
+    # st.write(selected_jd["clean_data"])
+    annotated_text(
+        create_annotated_text(
+            selected_jd["clean_data"],
+            selected_jd["extracted_keywords"],
+            "KW",
+            "#0B666A",
+        )
     )
-)
-#! TODO: 
+    st.write("Entities from the job description:")
+    create_star_graph(selected_jd["keyterms"], "Entities from Job Description")
+    # Annotate common words and show similarity score
+    annotated_text(
+        create_annotated_text(
+            selected_file["clean_data"],
+            selected_jd["extracted_keywords"],
+            "JD",
+            "#F24C3D",
+        )
+    )
+#! TODO:
 # st.write("Entities from the job description:")
 # create_star_graph(selected_jd["keyterms"], "Entities from Job Description")
 
 
 # Similarity score
-resume_string = " ".join(selected_file["extracted_keywords"])
-jd_string = " ".join(selected_jd["extracted_keywords"])
-result = get_score(resume_string, jd_string)
-similarity_score = round(float(result * 100), 2)
-score_color = (
-    "green" if similarity_score >= 75 else "orange" if similarity_score >= 60 else "red"
-)
-st.markdown(
-    f"Similarity Score: <span style='color:{score_color};font-size:24px;font-weight:bold'>{similarity_score}</span>",
-    unsafe_allow_html=True,
-)
+if selected_jd_name and selected_resume:
+    resume_string = " ".join(selected_file["extracted_keywords"])
+    jd_string = " ".join(selected_jd["extracted_keywords"])
+    result = get_score(resume_string, jd_string)
+    similarity_score = round(float(result * 100), 2)
+    score_color = (
+        "green"
+        if similarity_score >= 75
+        else "orange" if similarity_score >= 60 else "red"
+    )
+    st.markdown(
+        f"Similarity Score: <span style='color:{score_color};font-size:24px;font-weight:bold'>{similarity_score}</span>",
+        unsafe_allow_html=True,
+    )
