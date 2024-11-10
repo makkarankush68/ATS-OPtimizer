@@ -23,11 +23,6 @@ class JobDescriptionProcessor:
             print(f"An error occurred: {str(e)}")
             return False
 
-    def _read_resumes(self) -> dict:
-        data = read_single_pdf(self.input_file_name)
-        output = ParseResume(data).get_JSON()
-        return output
-
     def _read_job_desc(self) -> dict:
         data = read_single_pdf(self.input_file_name)
         output = ParseJobDesc(data).get_JSON()

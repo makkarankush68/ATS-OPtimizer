@@ -30,11 +30,6 @@ class ResumeProcessor:
         output = ParseResume(data).get_JSON()
         return output
 
-    def _read_job_desc(self) -> dict:
-        data = read_single_pdf(self.input_file_name)
-        output = ParseJobDesc(data).get_JSON()
-        return output
-
     def _write_json_file(self, resume_dictionary: dict ):
         file_name = str(
             self.input_file.split(".")[0].split('\\')[2] +".json"

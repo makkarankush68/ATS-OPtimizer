@@ -1,13 +1,11 @@
+import os
+import yaml
 import json
 import logging
-import os
 from typing import List
-
-import yaml
-# from qdrant_client import QdrantClient
-
+from qdrant_client import QdrantClient
+from sentence_transformers import SentenceTransformer, util
 from scripts.utils.logger import init_logging_config
-from sentence_transformers import SentenceTransformer, util # type: ignore
 
 init_logging_config(basic_log_level=logging.INFO)
 # Get the logger
@@ -51,34 +49,49 @@ READ_JOB_DESCRIPTION_FROM = os.path.join(cwd, "Data", "Processed", "JobDescripti
 config_path = os.path.join(cwd, "scripts", "similarity")
 
 
-
 # def get_score(resume_string, job_description_string):
-    # logger.info("Started getting similarity score")
+# logger.info("Started getting similarity score")
 
-    # documents: List[str] = [resume_string]
-    # client = QdrantClient(":memory:")
-    # client.set_model("BAAI/bge-base-en")
+# documents: List[str] = [resume_string]
+# client = QdrantClient(":memory:")
+# client.set_model("BAAI/bge-base-en")
 
-    # client.add(
-    #     collection_name="demo_collection",
-    #     documents=documents,
-    # )
+# client.add(
+#     collection_name="demo_collection",
+#     documents=documents,
+# )
 
-    # search_result = client.query(
-    #     collection_name="demo_collection", query_text=job_description_string
-    # )
-    # logger.info("Finished getting similarity score")
-    # return search_result
+# search_result = client.query(
+#     collection_name="demo_collection", query_text=job_description_string
+# )
+# logger.info("Finished getting similarity score")
+# return search_result
+
 
 def get_score(resume_string, job_description_string):
-    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Efficient model for similarity
+    model = SentenceTransformer(
+        "paraphrase-MiniLM-L6-v2"
+    )  # Efficient model for similarity
     resume_embedding = model.encode(resume_string)
     job_description_embedding = model.encode(job_description_string)
-    
+
     # Using pytorch_cos_sim for cosine similarity
     similarity = util.pytorch_cos_sim(resume_embedding, job_description_embedding)[0][0]
     print(similarity)
-    return similarity
+    # other method
+    documents: List[str] = [resume_string]
+    client = QdrantClient(":memory:")
+    client.set_model("BAAI/bge-base-en")
+
+    client.add(
+        collection_name="demo_collection",
+        documents=documents,
+    )
+
+    search_result = client.query(
+        collection_name="demo_collection", query_text=job_description_string
+    )
+    return [similarity, search_result]
 
 
 if __name__ == "__main__":

@@ -147,3 +147,4 @@ scripts/similarity/config.yml
 *.local.pdf
 og.py
 run_first.py
+.streamlit

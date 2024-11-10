@@ -80,10 +80,10 @@ def create_annotated_text(
         # Check if the token is in the set
         if token in word_set:
             # If it is, append a tuple with the token, annotation, and color code
-            annotated_text.append((" " + token, annotation, color_code))
+            annotated_text.append((" " + token + " ", annotation, color_code))
         else:
             # If it's not, just append the token as a string
-            annotated_text.append(" " + token)
+            annotated_text.append(" " + token + " ")
 
     return annotated_text
 
@@ -222,9 +222,11 @@ if job_description:
 
 # Display job descriptions and resumes
 resume_names = get_filenames_from_dir(PROCESSED_RESUMES_PATH)
-st.markdown(f"##### {len(resume_names)} resumes available. Please select one:")
-selected_resume = st.selectbox("", resume_names, index=0)
-if selected_resume:
+# st.markdown(f"##### {len(resume_names)} resumes available. Please select one:")
+# selected_resume = st.selectbox("", resume_names, index=0)
+selected_resume=None
+if resume_names:
+    selected_resume = resume_names[0]
     selected_file = read_json(os.path.join(PROCESSED_RESUMES_PATH, selected_resume))
     st.markdown("#### Parsed Resume Data")
     st.caption("Parsed text from your resume:")
@@ -233,7 +235,7 @@ if selected_resume:
         create_annotated_text(
             selected_file["clean_data"],
             selected_file["extracted_keywords"],
-            "KW",
+            "",
             "#0B666A",
         )
     )
@@ -242,11 +244,11 @@ if selected_resume:
 
 # Job descriptions available
 job_descriptions = get_filenames_from_dir(PROCESSED_JOB_DESCRIPTIONS_PATH)
-st.markdown(
-    f"##### {len(job_descriptions)} job descriptions available. Please select one:"
-)
-selected_jd_name = st.selectbox("", job_descriptions, index=1)
-if selected_jd_name:
+# st.markdown(f"##### {len(job_descriptions)} job descriptions available. Please select one:")
+# selected_jd_name = st.selectbox("", job_descriptions, index=0)
+selected_jd_name=None
+if job_descriptions:
+    selected_jd_name = job_descriptions[0]
     selected_jd = read_json(
         os.path.join(PROCESSED_JOB_DESCRIPTIONS_PATH, selected_jd_name)
     )
@@ -256,7 +258,7 @@ if selected_jd_name:
         create_annotated_text(
             selected_jd["clean_data"],
             selected_jd["extracted_keywords"],
-            "KW",
+            "",
             "#0B666A",
         )
     )
@@ -267,7 +269,7 @@ if selected_jd_name:
         create_annotated_text(
             selected_file["clean_data"],
             selected_jd["extracted_keywords"],
-            "JD",
+            "",
             "#F24C3D",
         )
     )
@@ -280,14 +282,87 @@ if selected_jd_name:
 if selected_jd_name and selected_resume:
     resume_string = " ".join(selected_file["extracted_keywords"])
     jd_string = " ".join(selected_jd["extracted_keywords"])
-    result = get_score(resume_string, jd_string)
-    similarity_score = round(float(result * 100), 2)
-    score_color = (
+    [result1, result2] = get_score(resume_string, jd_string)
+
+    similarity_score1 = round(float(result1 * 100), 2)
+    similarity_score2 = round(float(result2[0].score * 100), 2)
+
+    # Define color based on similarity score
+    score_color1 = (
         "green"
-        if similarity_score >= 75
-        else "orange" if similarity_score >= 60 else "red"
+        if similarity_score1 >= 75
+        else "orange" if similarity_score1 >= 60 else "red"
     )
-    st.markdown(
-        f"Similarity Score: <span style='color:{score_color};font-size:24px;font-weight:bold'>{similarity_score}</span>",
-        unsafe_allow_html=True,
+    score_color2 = (
+        "green"
+        if similarity_score2 >= 75
+        else "orange" if similarity_score2 >= 60 else "red"
     )
+
+    # Show bar chart
+    st.write("### Overall Scores")
+
+    # Custom bar chart with colors
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                name="Resume vs JD",
+                x=["Score"],
+                y=[similarity_score1],
+                marker_color=score_color1,
+            ),
+            go.Bar(
+                name="General Resume Score",
+                x=["Score"],
+                y=[similarity_score2],
+                marker_color=score_color2,
+            ),
+        ]
+    )
+
+    fig.update_layout(barmode="group")
+    st.plotly_chart(fig)
+
+    # Show gauge chart for similarity scores
+    fig = go.Figure()
+
+    # Gauge for similarity_score1
+    fig.add_trace(
+        go.Indicator(
+            mode="gauge+number",
+            value=similarity_score1,
+            title={"text": "Resume vs JD Score"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "blue"},
+                "steps": [
+                    {"range": [0, 60], "color": "red"},
+                    {"range": [60, 75], "color": "orange"},
+                    {"range": [75, 100], "color": "green"},
+                ],
+            },
+            domain={"x": [0, 0.5], "y": [0, 1]},
+        )
+    )
+
+    # Gauge for similarity_score2
+    fig.add_trace(
+        go.Indicator(
+            mode="gauge+number",
+            value=similarity_score2,
+            title={"text": "General Resume Score"},
+            gauge={
+                "axis": {"range": [0, 100]},
+                "bar": {"color": "blue"},
+                "steps": [
+                    {"range": [0, 60], "color": "red"},
+                    {"range": [60, 75], "color": "orange"},
+                    {"range": [75, 100], "color": "green"},
+                ],
+            },
+            domain={"x": [0.5, 1], "y": [0, 1]},
+        )
+    )
+
+    fig.update_layout(height=400, width=800, margin=dict(t=0, b=0, l=0, r=0))
+    st.plotly_chart(fig)
