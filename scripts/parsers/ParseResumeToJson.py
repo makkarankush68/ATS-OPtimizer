@@ -1,8 +1,4 @@
-import json
-import os
 import os.path
-import pathlib
-
 from scripts.Extractor import DataExtractor
 from scripts.KeytermsExtraction import KeytermExtractor
 from scripts.utils.Utils import CountFrequency, TextCleaner, generate_unique_id
