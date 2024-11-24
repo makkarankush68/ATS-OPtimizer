@@ -223,7 +223,7 @@ st.markdown(
 
 # Create two columns for the main layout
 col1, col2 = st.columns([1, 1])
-
+# upload resume
 with col1:
     st.markdown(
         """
@@ -254,7 +254,7 @@ with col1:
                 st.success("✅ Resume processed successfully!")
         except Exception as e:
             st.error(f"Error processing resume: {str(e)}")
-
+# add job description
 with col2:
     st.markdown(
         """
@@ -345,8 +345,8 @@ if resume_names:
     except Exception as e:
         st.error(f"Error displaying resume data: {str(e)}")
 
-selected_jd_name = None
 # Job description analysis
+selected_jd_name = None
 job_descriptions = get_filenames_from_dir(PROCESSED_JOB_DESCRIPTIONS_PATH)
 if job_descriptions:
     try:
